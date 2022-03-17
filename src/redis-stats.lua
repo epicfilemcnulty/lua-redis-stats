@@ -1,10 +1,11 @@
 local _M = { version = "1.0.0" }
+local redis = require("resty.redis")
+local uuid = require("resty.jit-uuid")
 
 local function init(host, port, db)
 	local host = host or os.getenv("REDIS_HOST") or "127.0.0.1"
 	local port = port or tonumber(os.getenv("REDIS_PORT")) or 6379
 	local db = db or tonumber(os.getenv("REDIS_DB")) or 0
-	local redis = require("resty.redis")
 	local red = redis:new()
 	red:set_timeouts(1000, 1000, 1000) -- 1 sec
 	local ok, err = red:connect(host, port)
@@ -30,6 +31,53 @@ local function save_request_stats()
 	end
 end
 
+local function mark_page_view()
+	local page_uuid = uuid()
+	local red, err = init()
+	if red then
+		red:sadd(ngx.var.host .. ":page_view_hashes:" .. ngx.var.uri, page_uuid)
+		if ngx.status and ngx.status >= 400 then
+			red:zincrby(ngx.var.host .. ":" .. tostring(ngx.status), 1, ngx.var.uri)
+		end
+		red:set_keepalive(10000, 100)
+	end
+	return page_uuid, ngx.encode_base64(ngx.var.uri, true)
+end
+
+local function confirm_page_view()
+	if ngx.var.arg_p and ngx.var.arg_h then
+		local red = init()
+		if red then
+			local count = red:srem(
+				ngx.var.host .. ":page_view_hashes:" .. ngx.decode_base64(ngx.var.arg_p),
+				ngx.var.arg_h
+			)
+			if count and count == 1 then
+				red:zincrby(ngx.var.host .. ":page_views", 1, ngx.decode_base64(ngx.var.arg_p))
+			end
+			red:set_keepalive(10000, 100)
+		end
+	end
+end
+
+local function get_page_views()
+	local red = init()
+	local count = 0
+	if red then
+		local c = red:zscore(ngx.var.host .. ":page_views", ngx.var.uri)
+		red:set_keepalive(10000, 100)
+		if c then
+			if c ~= ngx.null then
+				count = c
+			end
+		end
+	end
+	return count
+end
+
 _M.init = init
 _M.save_request_stats = save_request_stats
+_M.mark_page_view = mark_page_view
+_M.confirm_page_view = confirm_page_view
+_M.get_page_views = get_page_views
 return _M
