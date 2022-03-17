@@ -1,5 +1,5 @@
-package = "redis-stats"
- version = "1.0.0-1"
+package = "redstats"
+ version = "1.0.0-2"
  source = {
     url = "git+https://github.com/epicfilemcnulty/lua-redis-stats.git",
     tag = "v1.0.0"
@@ -18,6 +18,6 @@ package = "redis-stats"
  build = {
     type = "builtin",
     modules = {
-       redis-stats = "src/redis-stats.lua"
+       redstats = "src/redis-stats.lua"
     }
  }
