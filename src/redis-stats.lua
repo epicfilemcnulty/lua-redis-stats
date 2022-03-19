@@ -31,9 +31,9 @@ local function save_request_stats()
 	end
 end
 
-local function mark_page_view(suffix)
+local function mark_page_view(suffix, page_uuid)
 	local suffix = suffix or ":page_view_hashes:"
-	local page_uuid = uuid()
+	local page_uuid = page_uuid or uuid()
 	local red, err = init()
 	if red then
 		red:sadd(ngx.var.host .. suffix .. ngx.var.uri, page_uuid)
