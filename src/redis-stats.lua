@@ -36,6 +36,7 @@ local function mark_page_view()
 	local red, err = init()
 	if red then
 		red:sadd(ngx.var.host .. ":page_view_hashes:" .. ngx.var.uri, page_uuid)
+		red:sadd(ngx.var.host .. ":t_page_view_hashes:" .. ngx.var.uri, page_uuid)
 		if ngx.status and ngx.status >= 400 then
 			red:zincrby(ngx.var.host .. ":" .. tostring(ngx.status), 1, ngx.var.uri)
 		end
@@ -54,6 +55,13 @@ local function confirm_page_view()
 			)
 			if count and count == 1 then
 				red:zincrby(ngx.var.host .. ":page_views", 1, ngx.decode_base64(ngx.var.arg_p))
+			end
+			local count = red:srem(
+				ngx.var.host .. ":t_page_view_hashes:" .. ngx.decode_base64(ngx.var.arg_p),
+				ngx.var.arg_h
+			)
+			if count and count == 1 then
+				red:zincrby(ngx.var.host .. ":c_page_views", 1, ngx.decode_base64(ngx.var.arg_p))
 			end
 			red:set_keepalive(10000, 100)
 		end
