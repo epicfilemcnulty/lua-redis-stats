@@ -31,12 +31,12 @@ local function save_request_stats()
 	end
 end
 
-local function mark_page_view()
+local function mark_page_view(suffix)
+	local suffix = suffix or ":page_view_hashes:"
 	local page_uuid = uuid()
 	local red, err = init()
 	if red then
-		red:sadd(ngx.var.host .. ":page_view_hashes:" .. ngx.var.uri, page_uuid)
-		red:sadd(ngx.var.host .. ":t_page_view_hashes:" .. ngx.var.uri, page_uuid)
+		red:sadd(ngx.var.host .. suffix .. ngx.var.uri, page_uuid)
 		if ngx.status and ngx.status >= 400 then
 			red:zincrby(ngx.var.host .. ":" .. tostring(ngx.status), 1, ngx.var.uri)
 		end
@@ -45,34 +45,26 @@ local function mark_page_view()
 	return page_uuid, ngx.encode_base64(ngx.var.uri, true)
 end
 
-local function confirm_page_view()
+local function confirm_page_view(suffix)
+	local suffix = suffix or { ":page_view_hashes:", ":page_views" }
 	if ngx.var.arg_p and ngx.var.arg_h then
 		local red = init()
 		if red then
-			local count = red:srem(
-				ngx.var.host .. ":page_view_hashes:" .. ngx.decode_base64(ngx.var.arg_p),
-				ngx.var.arg_h
-			)
+			local count = red:srem(ngx.var.host .. suffix[1] .. ngx.decode_base64(ngx.var.arg_p), ngx.var.arg_h)
 			if count and count == 1 then
-				red:zincrby(ngx.var.host .. ":page_views", 1, ngx.decode_base64(ngx.var.arg_p))
-			end
-			local count = red:srem(
-				ngx.var.host .. ":t_page_view_hashes:" .. ngx.decode_base64(ngx.var.arg_p),
-				ngx.var.arg_h
-			)
-			if count and count == 1 then
-				red:zincrby(ngx.var.host .. ":c_page_views", 1, ngx.decode_base64(ngx.var.arg_p))
+				red:zincrby(ngx.var.host .. suffix[2], 1, ngx.decode_base64(ngx.var.arg_p))
 			end
 			red:set_keepalive(10000, 100)
 		end
 	end
 end
 
-local function get_page_views()
+local function get_page_views(suffix)
+	local suffix = suffix or ":page_views"
 	local red = init()
 	local count = 0
 	if red then
-		local c = red:zscore(ngx.var.host .. ":page_views", ngx.var.uri)
+		local c = red:zscore(ngx.var.host .. suffix, ngx.var.uri)
 		red:set_keepalive(10000, 100)
 		if c then
 			if c ~= ngx.null then

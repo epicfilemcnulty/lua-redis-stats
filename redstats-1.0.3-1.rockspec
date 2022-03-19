@@ -1,8 +1,8 @@
 package = "redstats"
- version = "1.0.2-1"
+ version = "1.0.3-1"
  source = {
     url = "git+https://github.com/epicfilemcnulty/lua-redis-stats.git",
-    tag = "v1.0.2"
+    tag = "v1.0.3"
  }
  description = {
     summary = "Lua library for openresty to save request stats to redis",
